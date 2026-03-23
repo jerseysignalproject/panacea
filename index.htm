@@ -6,14 +6,14 @@
     <style>
         :root { --green: #1DB954; --black: #121212; --light: #282828; }
         body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        nav { width: 320px; background: #000; padding: 20px; display: flex; flex-direction: column; gap: 20px; border-right: 1px solid #282828; }
+        nav { width: 320px; background: #000; padding: 20px; display: flex; flex-direction: column; gap: 20px; border-right: 1px solid #282828; overflow-y: hidden;}
         .logo { font-weight: bold; font-size: 24px; color: var(--green); letter-spacing: -1px; }
-        main { flex: 1; background: linear-gradient(to bottom, #1e1e1e, var(--black)); padding: 40px; overflow-y: auto; padding-bottom: 100px; }
+        main { flex: 1; background: linear-gradient(to bottom, #1e1e1e, var(--black)); padding: 40px; overflow-y: auto; padding-bottom: 120px; }
         header { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 30px; }
         .art { width: 200px; height: 200px; background: var(--light); box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 80px; }
         footer { position: fixed; bottom: 0; width: 100%; height: 90px; background: #181818; border-top: 1px solid #282828; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 10; }
         .controls { width: 40%; text-align: center; }
-        button { background: var(--green); border: none; border-radius: 50px; padding: 12px 30px; font-weight: bold; cursor: pointer; transition: 0.2s; color: #000; margin-right: 10px; }
+        button { background: var(--green); border: none; border-radius: 50px; padding: 12px 30px; font-weight: bold; cursor: pointer; transition: 0.2s; color: #000; margin-right: 10px; font-size: 12px;}
         button:hover { transform: scale(1.05); }
         .btn-round { width: 40px; height: 40px; padding: 0; border-radius: 50%; }
         #track-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
@@ -27,13 +27,22 @@
         .track-duration { color: #b3b3b3; font-family: monospace; font-size: 11px; margin-left: 10px; }
         .debug-panel { margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; font-family: monospace; font-size: 12px; color: #888; border: 1px solid #333; }
         canvas { width: 100%; height: 100%; }
+        
+        /* Custom Generator Form Styles */
+        .custom-gen-panel { background: rgba(255,255,255,0.03); border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+        .custom-gen-panel h3 { margin-top: 0; color: var(--green); font-size: 16px; margin-bottom: 15px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 12px; color: #b3b3b3; display: flex; justify-content: space-between; }
+        .input-group input[type="range"] { accent-color: var(--green); cursor: pointer; }
+        .input-group select, .input-group input[type="number"] { background: #282828; color: #fff; border: 1px solid #444; padding: 6px; border-radius: 4px; font-family: inherit; font-size: 13px; }
     </style>
 </head>
 <body onload="Mixer.genLibrary()">
 
 <nav>
     <div class="logo">BitStream</div>
-    <div style="font-size: 11px; color: #b3b3b3; letter-spacing: 1px;">20 UNIQUE COMPOSITIONS</div>
+    <div style="font-size: 11px; color: #b3b3b3; letter-spacing: 1px;">LIBRARY</div>
     <ul id="track-list"></ul>
 </nav>
 
@@ -47,8 +56,88 @@
             <div style="color: #6a6a6a; font-size: 12px;" id="cur-meta">High-Fidelity Stereo Mix</div>
         </div>
     </header>
+
+    <div class="custom-gen-panel">
+        <h3>Create Custom Track</h3>
+        <div class="form-grid">
+            <div class="input-group">
+                <label>Target Length (Minutes) <span id="val-length">3.0</span></label>
+                <input type="range" id="c-length" min="0.5" max="10" step="0.5" value="3" oninput="document.getElementById('val-length').innerText=this.value">
+            </div>
+            <div class="input-group">
+                <label>Arrangement / Style</label>
+                <select id="c-style">
+                    <option value="random">Surprise Me</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Scale (Mood)</label>
+                <select id="c-scale">
+                    <option value="random">Random Scale</option>
+                    <option value="0">Major Pentatonic</option>
+                    <option value="1">Minor Pentatonic</option>
+                    <option value="2">Blues Scale</option>
+                    <option value="3">Dorian Mode</option>
+                    <option value="4">Phrygian Mode</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>BPM (Tempo) <span id="val-bpm">Auto</span></label>
+                <input type="range" id="c-bpm" min="60" max="180" step="1" value="110" oninput="document.getElementById('val-bpm').innerText=this.value">
+            </div>
+            <div class="input-group">
+                <label>Reverb Amount <span id="val-rev">0.3</span></label>
+                <input type="range" id="c-rev" min="0" max="0.8" step="0.05" value="0.3" oninput="document.getElementById('val-rev').innerText=this.value">
+            </div>
+            <div class="input-group">
+                <label>Echo Amount <span id="val-echo">0.2</span></label>
+                <input type="range" id="c-echo" min="0" max="0.8" step="0.05" value="0.2" oninput="document.getElementById('val-echo').innerText=this.value">
+            </div>
+            <div class="input-group">
+                <label>Swing (Groove) <span id="val-swing">0.1</span></label>
+                <input type="range" id="c-swing" min="0" max="0.6" step="0.05" value="0.1" oninput="document.getElementById('val-swing').innerText=this.value">
+            </div>
+            <div class="input-group">
+                <label>Polyphony (Chords)</label>
+                <select id="c-poly">
+                    <option value="1">1 (Monophonic Lead)</option>
+                    <option value="2">2 Voices</option>
+                    <option value="3" selected>3 Voices</option>
+                    <option value="4">4 Voices</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Lead Waveform</label>
+                <select id="c-lead-wave">
+                    <option value="square" selected>Square</option>
+                    <option value="sine">Sine</option>
+                    <option value="sawtooth">Sawtooth</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Lead Vol <span id="val-lvol">0.10</span></label>
+                <input type="range" id="c-lvol" min="0" max="0.5" step="0.01" value="0.1" oninput="document.getElementById('val-lvol').innerText=this.value">
+            </div>
+            <div class="input-group">
+                <label>Bass Waveform</label>
+                <select id="c-bass-wave">
+                    <option value="triangle" selected>Triangle</option>
+                    <option value="sine">Sine</option>
+                    <option value="square">Square</option>
+                    <option value="sawtooth">Sawtooth</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Bass Vol <span id="val-bvol">0.35</span></label>
+                <input type="range" id="c-bvol" min="0" max="0.8" step="0.01" value="0.35" oninput="document.getElementById('val-bvol').innerText=this.value">
+            </div>
+        </div>
+        <button onclick="Mixer.genCustomTrack()">GENERATE & PLAY CUSTOM</button>
+    </div>
+
     <div style="margin-bottom: 20px;">
-        <button onclick="Mixer.genLibrary()">REGENERATE LIBRARY</button>
+        <button onclick="Mixer.genLibrary()" style="background: transparent; border: 1px solid var(--green); color: var(--green);">REGENERATE RANDOM LIBRARY</button>
         <button style="background: #333; color: #fff;" onclick="Mixer.download(Mixer.tracks[Mixer.idx])">DOWNLOAD .WAV</button>
         <button style="background: #1d3fb9; color: #fff;" onclick="Mixer.batchDownload()">BATCH EXPORT ALL</button>
     </div>
@@ -85,8 +174,6 @@ const Mixer = {
         { name: 'Aggressive Saw', lead: 'sawtooth', bass: 'square', leadVol: 0.05, bassVol: 0.25, style: 'heavy', poly: 1, swing: 0 },
         { name: 'Chiptune Glitch', lead: 'square', bass: 'sawtooth', leadVol: 0.08, bassVol: 0.2, style: 'chip', poly: 1, swing: 0 },
         { name: 'Deep Acid', lead: 'sawtooth', bass: 'sawtooth', leadVol: 0.04, bassVol: 0.22, style: 'heavy', poly: 1, swing: 0 },
-        
-        // NEW JAZZ AND LOFI ARRANGEMENTS
         { name: 'Lofi Chillhop', lead: 'sine', bass: 'triangle', leadVol: 0.15, bassVol: 0.4, style: 'lofi', poly: 3, swing: 0.2 },
         { name: 'Lofi Study Beats', lead: 'triangle', bass: 'sine', leadVol: 0.18, bassVol: 0.45, style: 'lofi', poly: 4, swing: 0.15 },
         { name: 'Smooth Jazz Quartet', lead: 'triangle', bass: 'sine', leadVol: 0.1, bassVol: 0.4, style: 'jazz', poly: 4, swing: 0.35 },
@@ -97,8 +184,9 @@ const Mixer = {
         lofi: { pre: ['Midnight', 'Rainy', 'Coffee', 'Distant', 'Velvet'], suf: ['Nap', 'Stroll', 'Dream', 'Tape', 'Vibe'] },
         heavy: { pre: ['Acid', 'Reactor', 'Omega', 'Vortex', 'Hard'], suf: ['Crush', 'Break', 'Core', 'Noise', 'Storm'] },
         smooth: { pre: ['Liquid', 'Solar', 'Cloud', 'Ether', 'Neon'], suf: ['Flow', 'Drift', 'Pulse', 'Light', 'Path'] },
-        jazz: { pre: ['Cool', 'Blue', 'Autumn', 'Evening', 'Harlem'], suf: ['Cats', 'Trio', 'Swing', 'Walk', 'Lounge'] } // Added Jazz Lexicon
+        jazz: { pre: ['Cool', 'Blue', 'Autumn', 'Evening', 'Harlem'], suf: ['Cats', 'Trio', 'Swing', 'Walk', 'Lounge'] }
     },
+    monsters: ['👾', '👽', '🤖', '🍄', '👻', '🐉', '🐙', '💀', '☕', '🎷', '🎛️', '🎹'],
 
     init() {
         if(this.A) return;
@@ -113,19 +201,32 @@ const Mixer = {
         this.delay.connect(this.n);
         this.panner.connect(this.n);
         this.n.connect(this.A.destination);
+        
+        const styleSelect = document.getElementById('c-style');
+        this.arrangements.forEach((arr, idx) => {
+            let opt = document.createElement('option');
+            opt.value = idx;
+            opt.innerText = arr.name;
+            styleSelect.appendChild(opt);
+        });
+
         this.draw();
     },
 
+    calcSeqLength(bpm, targetMinutes) {
+        return Math.floor((targetMinutes * bpm) / 4);
+    },
+
     genLibrary() {
+        this.init();
         if(this.loop) clearTimeout(this.loop);
         this.isPlaying = false;
         this.tracks = [];
         const bandNames = ['The 8-Bit Invaders', 'Deep Space Echo', 'Mycelium Beats', 'Phantasmagoria', 'System Error', 'The Cool Cats', 'Study Girl'];
-        const monsters = ['👾', '👽', '🤖', '🍄', '👻', '🐉', '🐙', '💀', '☕', '🎷'];
         
         const activeBands = bandNames.map(name => ({
             name: name,
-            emoji: monsters[Math.random()*monsters.length|0],
+            emoji: this.monsters[Math.random()*this.monsters.length|0],
             styles: name.includes('Beats') || name.includes('Girl') ? ['lofi'] : name.includes('Cats') ? ['jazz'] : name.includes('Error') ? ['heavy', 'chip'] : ['smooth', 'chip', 'lofi'],
             scale: this.scales[Math.random()*this.scales.length|0]
         }));
@@ -134,30 +235,112 @@ const Mixer = {
             const band = activeBands[Math.random()*activeBands.length|0];
             const validArr = this.arrangements.filter(a => band.styles.includes(a.style));
             const instr = validArr[Math.floor(Math.random() * validArr.length)];
+            const bpm = (instr.style === 'lofi' || instr.style === 'jazz') ? (70 + Math.random()*25|0) : (100 + Math.random()*50|0);
+            
+            const targetMinutes = 2.8 + (Math.random() * 0.4); 
+            const requiredSeqs = this.calcSeqLength(bpm, targetMinutes);
+
             const trackPatterns = [];
             for(let i=0; i<8; i++) {
                 trackPatterns.push({
                     lead: Array.from({length: 8}, () => band.scale[Math.random()*band.scale.length|0]),
-                    chords: Array.from({length: 8}, () => Math.random() > 0.4 ? band.scale : null), // Added chords array for polyphony
+                    chords: Array.from({length: 8}, () => Math.random() > 0.4 ? band.scale : null),
                     bass: Array.from({length: 8}, () => [0, -12, -5, -7][Math.random()*4|0]),
                     perc: Array.from({length: 8}, () => Math.random() > 0.75 ? 1 : 0)
                 });
             }
             const lex = this.lexicon[instr.style];
             const name = `${lex.pre[Math.random()*lex.pre.length|0]} ${lex.suf[Math.random()*lex.suf.length|0]} #${Math.random().toString(36).substring(7).toUpperCase()}`;
+            
             this.tracks.push({
                 band: band.name,
                 name: name,
                 emoji: band.emoji,
-                bpm: (instr.style === 'lofi' || instr.style === 'jazz') ? (70 + Math.random()*25|0) : (100 + Math.random()*50|0),
+                bpm: bpm,
                 instr: instr,
                 patterns: trackPatterns,
                 fx: { reverb: Math.random()*0.4, echo: Math.random()*0.3, intensity: 0.9 + Math.random()*0.4, bassShift: [0, -12][Math.random()*2|0], sustain: 0.08 + Math.random()*0.25, pan: (Math.random()*1.6)-0.8 },
-                seq: Array.from({length: 32 + (Math.random()*32|0)}, () => Math.random()*8|0) 
+                seq: Array.from({length: requiredSeqs}, () => Math.random()*8|0) 
             });
         }
         this.renderList();
+        this.idx = 0;
         document.getElementById('p-btn').innerText = "▶";
+    },
+
+    genCustomTrack() {
+        this.init();
+
+        const targetLength = parseFloat(document.getElementById('c-length').value);
+        const bpmInput = parseInt(document.getElementById('c-bpm').value);
+        const styleInput = document.getElementById('c-style').value;
+        const scaleInput = document.getElementById('c-scale').value;
+        const revVal = parseFloat(document.getElementById('c-rev').value);
+        const echoVal = parseFloat(document.getElementById('c-echo').value);
+        const swingVal = parseFloat(document.getElementById('c-swing').value);
+        const polyVal = parseInt(document.getElementById('c-poly').value);
+        
+        // Manual Voice Tweak selections
+        const leadWave = document.getElementById('c-lead-wave').value;
+        const bassWave = document.getElementById('c-bass-wave').value;
+        const leadVol = parseFloat(document.getElementById('c-lvol').value);
+        const bassVol = parseFloat(document.getElementById('c-bvol').value);
+
+        const instrTemplate = styleInput === 'random' ? 
+            this.arrangements[Math.floor(Math.random() * this.arrangements.length)] : 
+            this.arrangements[parseInt(styleInput)];
+        
+        const instr = JSON.parse(JSON.stringify(instrTemplate)); 
+        instr.swing = swingVal;
+        instr.poly = polyVal;
+        
+        // Apply Manual Voice Overrides
+        instr.lead = leadWave;
+        instr.bass = bassWave;
+        instr.leadVol = leadVol;
+        instr.bassVol = bassVol;
+
+        const scale = scaleInput === 'random' ? 
+            this.scales[Math.random()*this.scales.length|0] : 
+            this.scales[parseInt(scaleInput)];
+
+        const requiredSeqs = this.calcSeqLength(bpmInput, targetLength);
+
+        const trackPatterns = [];
+        for(let i=0; i<8; i++) {
+            trackPatterns.push({
+                lead: Array.from({length: 8}, () => scale[Math.random()*scale.length|0]),
+                chords: Array.from({length: 8}, () => Math.random() > 0.4 ? scale : null),
+                bass: Array.from({length: 8}, () => [0, -12, -5, -7][Math.random()*4|0]),
+                perc: Array.from({length: 8}, () => Math.random() > 0.75 ? 1 : 0)
+            });
+        }
+
+        const lex = this.lexicon[instr.style];
+        const customName = `Custom ${lex.pre[Math.random()*lex.pre.length|0]} ${lex.suf[Math.random()*lex.suf.length|0]} [${targetLength}m]`;
+
+        const newTrack = {
+            band: "User Defined",
+            name: customName,
+            emoji: '🎛️',
+            bpm: bpmInput,
+            instr: instr,
+            patterns: trackPatterns,
+            fx: { 
+                reverb: revVal, 
+                echo: echoVal, 
+                intensity: 1.0, 
+                bassShift: [0, -12][Math.random()*2|0], 
+                sustain: 0.15, 
+                pan: 0 
+            },
+            seq: Array.from({length: requiredSeqs}, () => Math.random()*8|0)
+        };
+
+        this.tracks.unshift(newTrack);
+        this.idx = 0; 
+        this.renderList();
+        this.play();
     },
 
     tick(trackIdx, step) {
@@ -167,7 +350,6 @@ const Mixer = {
         const pattern = track.patterns[track.seq[Math.floor(step / 8)]];
         const subStep = step % 8;
         
-        // ADDED SWING TIMING
         const baseSpeed = 60 / track.bpm / 2; 
         const speed = (step % 2 === 0) ? baseSpeed * (1 + track.instr.swing) : baseSpeed * (1 - track.instr.swing);
         
@@ -179,10 +361,8 @@ const Mixer = {
         this.panner.pan.setTargetAtTime(track.fx.pan, now, 0.1);
         const g = track.fx.intensity;
         
-        // Single Lead
         this.osc(pattern.lead[subStep]+12, track.instr.lead, track.instr.leadVol*g, now, track.fx.sustain, track.instr.style);
         
-        // ADDED POLYPHONY (CHORDS)
         if (track.instr.poly > 1 && pattern.chords[subStep]) {
             pattern.chords[subStep].slice(0, track.instr.poly).forEach((noteOffset) => {
                 this.osc(noteOffset + 12, track.instr.lead, (track.instr.leadVol*0.4)*g, now, track.fx.sustain*2, track.instr.style);
@@ -204,7 +384,6 @@ const Mixer = {
         g.gain.setTargetAtTime(vol, time, 0.015);
         g.gain.setTargetAtTime(0.0001, time + sustain, 0.05);
         
-        // ADDED LOWPASS FILTER FOR WARM JAZZ/LOFI TONE
         if (style === 'lofi' || style === 'jazz') {
             const filter = this.A.createBiquadFilter();
             filter.type = 'lowpass';
@@ -232,7 +411,6 @@ const Mixer = {
         const baseTime = 60 / t.bpm / 2;
         const totalSteps = t.seq.length * 8;
         
-        // Calculate exact duration considering swing
         let duration = 0;
         for (let s = 0; s < totalSteps; s++) {
             duration += (s % 2 === 0) ? baseTime * (1 + t.instr.swing) : baseTime * (1 - t.instr.swing);
@@ -246,20 +424,16 @@ const Mixer = {
             const subStep = s % 8;
             const g = t.fx.intensity;
             
-            // Render Lead
             this.renderOsc(offlineCtx, pattern.lead[subStep] + 12, t.instr.lead, t.instr.leadVol * g, currentTime, t.fx.sustain, t.fx.pan, t.instr.style);
             
-            // Render Polyphony (Chords)
             if (t.instr.poly > 1 && pattern.chords[subStep]) {
                 pattern.chords[subStep].slice(0, t.instr.poly).forEach((noteOffset) => {
                     this.renderOsc(offlineCtx, noteOffset + 12, t.instr.lead, (t.instr.leadVol*0.4) * g, currentTime, t.fx.sustain*2, t.fx.pan, t.instr.style);
                 });
             }
 
-            // Render Bass
             if (subStep % 4 == 0) this.renderOsc(offlineCtx, pattern.bass[subStep] + t.fx.bassShift, t.instr.bass, t.instr.bassVol * g, currentTime, t.fx.sustain * 1.2, t.fx.pan, t.instr.style);
             
-            // Advance time with swing
             currentTime += (s % 2 === 0) ? baseTime * (1 + t.instr.swing) : baseTime * (1 - t.instr.swing);
         }
 
@@ -282,7 +456,6 @@ const Mixer = {
         g.gain.setTargetAtTime(vol, time, 0.015);
         g.gain.setTargetAtTime(0.0001, time + sustain, 0.05);
 
-        // Render with Filter for Jazz/Lofi
         if (style === 'lofi' || style === 'jazz') {
             const filter = ctx.createBiquadFilter();
             filter.type = 'lowpass';
@@ -296,7 +469,7 @@ const Mixer = {
     },
 
     batchDownload() {
-        if(!confirm("Export all 20 tracks as WAV files?")) return;
+        if(!confirm("Export all tracks as WAV files?")) return;
         this.tracks.forEach((t, i) => setTimeout(() => this.download(t), i * 500));
     },
 
