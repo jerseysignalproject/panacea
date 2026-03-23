@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Panacea Sound</title>
+    <style>
+        :root { --green: #1DB954; --black: #121212; --light: #282828; }
+        body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        nav { width: 320px; background: #000; padding: 20px; display: flex; flex-direction: column; gap: 20px; border-right: 1px solid #282828; }
+        .logo { font-weight: bold; font-size: 24px; color: var(--green); letter-spacing: -1px; }
+        main { flex: 1; background: linear-gradient(to bottom, #1e1e1e, var(--black)); padding: 40px; overflow-y: auto; padding-bottom: 100px; }
+        header { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 30px; }
+        .art { width: 200px; height: 200px; background: var(--light); box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 80px; }
+        footer { position: fixed; bottom: 0; width: 100%; height: 90px; background: #181818; border-top: 1px solid #282828; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 10; }
+        .controls { width: 40%; text-align: center; }
+        button { background: var(--green); border: none; border-radius: 50px; padding: 12px 30px; font-weight: bold; cursor: pointer; transition: 0.2s; color: #000; margin-right: 10px; }
+        button:hover { transform: scale(1.05); }
+        .btn-round { width: 40px; height: 40px; padding: 0; border-radius: 50%; }
+        #track-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
+        .track-item { padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; cursor: pointer; align-items: center; }
+        .track-item:hover { background: rgba(255,255,255,0.1); }
+        .track-item.active { background: rgba(255,255,255,0.1); }
+        .track-item.active .t-name { color: var(--green); }
+        .track-meta-stack { display: flex; flex-direction: column; overflow: hidden; }
+        .t-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .t-band { font-size: 12px; color: #b3b3b3; }
+        .track-duration { color: #b3b3b3; font-family: monospace; font-size: 11px; margin-left: 10px; }
+        .debug-panel { margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; font-family: monospace; font-size: 12px; color: #888; border: 1px solid #333; }
+        canvas { width: 100%; height: 100%; }
+    </style>
+</head>
+<body onload="Mixer.genLibrary()">
+
+<nav>
+    <div class="logo">BitStream</div>
+    <div style="font-size: 11px; color: #b3b3b3; letter-spacing: 1px;">20 UNIQUE COMPOSITIONS</div>
+    <ul id="track-list"></ul>
+</nav>
+
+<main>
+    <header>
+        <div class="art" id="art-box">👾</div>
+        <div>
+            <div style="font-size: 12px; font-weight: bold; color: var(--green);">PROCEDURAL ENGINE</div>
+            <h1 id="cur-title" style="font-size: 52px; margin: 0 0 5px 0; line-height: 1;">Initialize</h1>
+            <h2 id="cur-band" style="font-size: 24px; margin: 0 0 15px 0; color: #b3b3b3; font-weight: normal;">Select a track</h2>
+            <div style="color: #6a6a6a; font-size: 12px;" id="cur-meta">High-Fidelity Stereo Mix</div>
+        </div>
+    </header>
+    <div style="margin-bottom: 20px;">
+        <button onclick="Mixer.genLibrary()">REGENERATE LIBRARY</button>
+        <button style="background: #333; color: #fff;" onclick="Mixer.download(Mixer.tracks[Mixer.idx])">DOWNLOAD .WAV</button>
+        <button style="background: #1d3fb9; color: #fff;" onclick="Mixer.batchDownload()">BATCH EXPORT ALL</button>
+    </div>
+    
+    <div class="debug-panel" id="debug-out">
+        // ENGINE_VARIABLES_ACTIVE: No data
+    </div>
+</main>
+
+<footer>
+    <div class="now-playing" style="width:30%; display: flex; align-items: center; gap: 15px;">
+        <div class="track-meta-stack">
+            <div id="play-name" style="font-weight: bold; font-size: 14px;">Select Track</div>
+            <div id="play-artist" style="font-size: 11px; color: #b3b3b3;">Subwoofer Engine Active</div>
+        </div>
+    </div>
+    <div class="controls">
+        <button class="btn-round" onclick="Mixer.prev()">⏮</button>
+        <button class="btn-round" id="p-btn" onclick="Mixer.toggle()">▶</button>
+        <button class="btn-round" onclick="Mixer.next()">⏭</button>
+    </div>
+    <div class="visuals" style="width:30%">
+        <canvas id="v"></canvas>
+    </div>
+</footer>
+
+<script>
+const Mixer = {
+    A: null, n: null, panner: null, idx: 0, isPlaying: false, tracks: [], loop: null,
+    scales: [[0,2,4,7,9],[0,3,5,7,10],[0,2,3,5,7,8,10],[0,2,4,5,7,9,11],[0,1,3,5,7,8,10]],
+    arrangements: [
+        { name: 'Standard NES', lead: 'square', bass: 'triangle', leadVol: 0.1, bassVol: 0.35, style: 'chip', poly: 1, swing: 0 },
+        { name: 'Smooth Sine', lead: 'sine', bass: 'sine', leadVol: 0.2, bassVol: 0.45, style: 'smooth', poly: 1, swing: 0 },
+        { name: 'Aggressive Saw', lead: 'sawtooth', bass: 'square', leadVol: 0.05, bassVol: 0.25, style: 'heavy', poly: 1, swing: 0 },
+        { name: 'Chiptune Glitch', lead: 'square', bass: 'sawtooth', leadVol: 0.08, bassVol: 0.2, style: 'chip', poly: 1, swing: 0 },
+        { name: 'Deep Acid', lead: 'sawtooth', bass: 'sawtooth', leadVol: 0.04, bassVol: 0.22, style: 'heavy', poly: 1, swing: 0 },
+        
+        // NEW JAZZ AND LOFI ARRANGEMENTS
+        { name: 'Lofi Chillhop', lead: 'sine', bass: 'triangle', leadVol: 0.15, bassVol: 0.4, style: 'lofi', poly: 3, swing: 0.2 },
+        { name: 'Lofi Study Beats', lead: 'triangle', bass: 'sine', leadVol: 0.18, bassVol: 0.45, style: 'lofi', poly: 4, swing: 0.15 },
+        { name: 'Smooth Jazz Quartet', lead: 'triangle', bass: 'sine', leadVol: 0.1, bassVol: 0.4, style: 'jazz', poly: 4, swing: 0.35 },
+        { name: 'Midnight Jazz Club', lead: 'sine', bass: 'triangle', leadVol: 0.12, bassVol: 0.35, style: 'jazz', poly: 3, swing: 0.4 }
+    ],
+    lexicon: {
+        chip: { pre: ['Crystal', 'Pixel', 'Bit', 'Mega', 'Hyper'], suf: ['Zone', 'World', 'Quest', 'Level', 'Boss'] },
+        lofi: { pre: ['Midnight', 'Rainy', 'Coffee', 'Distant', 'Velvet'], suf: ['Nap', 'Stroll', 'Dream', 'Tape', 'Vibe'] },
+        heavy: { pre: ['Acid', 'Reactor', 'Omega', 'Vortex', 'Hard'], suf: ['Crush', 'Break', 'Core', 'Noise', 'Storm'] },
+        smooth: { pre: ['Liquid', 'Solar', 'Cloud', 'Ether', 'Neon'], suf: ['Flow', 'Drift', 'Pulse', 'Light', 'Path'] },
+        jazz: { pre: ['Cool', 'Blue', 'Autumn', 'Evening', 'Harlem'], suf: ['Cats', 'Trio', 'Swing', 'Walk', 'Lounge'] } // Added Jazz Lexicon
+    },
+
+    init() {
+        if(this.A) return;
+        this.A = new (window.AudioContext || window.webkitAudioContext)();
+        this.n = this.A.createAnalyser();
+        this.panner = this.A.createStereoPanner();
+        this.delay = this.A.createDelay(2.0);
+        this.feedback = this.A.createGain();
+        this.wet = this.A.createGain();
+        this.delay.connect(this.feedback);
+        this.feedback.connect(this.delay);
+        this.delay.connect(this.n);
+        this.panner.connect(this.n);
+        this.n.connect(this.A.destination);
+        this.draw();
+    },
+
+    genLibrary() {
+        if(this.loop) clearTimeout(this.loop);
+        this.isPlaying = false;
+        this.tracks = [];
+        const bandNames = ['The 8-Bit Invaders', 'Deep Space Echo', 'Mycelium Beats', 'Phantasmagoria', 'System Error', 'The Cool Cats', 'Study Girl'];
+        const monsters = ['👾', '👽', '🤖', '🍄', '👻', '🐉', '🐙', '💀', '☕', '🎷'];
+        
+        const activeBands = bandNames.map(name => ({
+            name: name,
+            emoji: monsters[Math.random()*monsters.length|0],
+            styles: name.includes('Beats') || name.includes('Girl') ? ['lofi'] : name.includes('Cats') ? ['jazz'] : name.includes('Error') ? ['heavy', 'chip'] : ['smooth', 'chip', 'lofi'],
+            scale: this.scales[Math.random()*this.scales.length|0]
+        }));
+
+        for(let j=0; j<20; j++) {
+            const band = activeBands[Math.random()*activeBands.length|0];
+            const validArr = this.arrangements.filter(a => band.styles.includes(a.style));
+            const instr = validArr[Math.floor(Math.random() * validArr.length)];
+            const trackPatterns = [];
+            for(let i=0; i<8; i++) {
+                trackPatterns.push({
+                    lead: Array.from({length: 8}, () => band.scale[Math.random()*band.scale.length|0]),
+                    chords: Array.from({length: 8}, () => Math.random() > 0.4 ? band.scale : null), // Added chords array for polyphony
+                    bass: Array.from({length: 8}, () => [0, -12, -5, -7][Math.random()*4|0]),
+                    perc: Array.from({length: 8}, () => Math.random() > 0.75 ? 1 : 0)
+                });
+            }
+            const lex = this.lexicon[instr.style];
+            const name = `${lex.pre[Math.random()*lex.pre.length|0]} ${lex.suf[Math.random()*lex.suf.length|0]} #${Math.random().toString(36).substring(7).toUpperCase()}`;
+            this.tracks.push({
+                band: band.name,
+                name: name,
+                emoji: band.emoji,
+                bpm: (instr.style === 'lofi' || instr.style === 'jazz') ? (70 + Math.random()*25|0) : (100 + Math.random()*50|0),
+                instr: instr,
+                patterns: trackPatterns,
+                fx: { reverb: Math.random()*0.4, echo: Math.random()*0.3, intensity: 0.9 + Math.random()*0.4, bassShift: [0, -12][Math.random()*2|0], sustain: 0.08 + Math.random()*0.25, pan: (Math.random()*1.6)-0.8 },
+                seq: Array.from({length: 32 + (Math.random()*32|0)}, () => Math.random()*8|0) 
+            });
+        }
+        this.renderList();
+        document.getElementById('p-btn').innerText = "▶";
+    },
+
+    tick(trackIdx, step) {
+        if(!this.isPlaying || trackIdx !== this.idx) return;
+        const track = this.tracks[trackIdx];
+        if (step >= track.seq.length * 8) { this.next(); return; }
+        const pattern = track.patterns[track.seq[Math.floor(step / 8)]];
+        const subStep = step % 8;
+        
+        // ADDED SWING TIMING
+        const baseSpeed = 60 / track.bpm / 2; 
+        const speed = (step % 2 === 0) ? baseSpeed * (1 + track.instr.swing) : baseSpeed * (1 - track.instr.swing);
+        
+        const now = this.A.currentTime;
+        if(track.instr.style === 'lofi' && Math.random() > 0.8) this.noise(0.012, now, true);
+        this.delay.delayTime.setTargetAtTime(baseSpeed * 1.5, now, 0.1);
+        this.feedback.gain.setTargetAtTime(track.fx.echo, now, 0.1);
+        this.wet.gain.setTargetAtTime(track.fx.reverb, now, 0.1);
+        this.panner.pan.setTargetAtTime(track.fx.pan, now, 0.1);
+        const g = track.fx.intensity;
+        
+        // Single Lead
+        this.osc(pattern.lead[subStep]+12, track.instr.lead, track.instr.leadVol*g, now, track.fx.sustain, track.instr.style);
+        
+        // ADDED POLYPHONY (CHORDS)
+        if (track.instr.poly > 1 && pattern.chords[subStep]) {
+            pattern.chords[subStep].slice(0, track.instr.poly).forEach((noteOffset) => {
+                this.osc(noteOffset + 12, track.instr.lead, (track.instr.leadVol*0.4)*g, now, track.fx.sustain*2, track.instr.style);
+            });
+        }
+
+        if(subStep%4==0){
+            this.osc(pattern.bass[subStep]+track.fx.bassShift, track.instr.bass, track.instr.bassVol*g, now, track.fx.sustain*1.2, track.instr.style);
+            this.osc(pattern.bass[subStep]+track.fx.bassShift-12, 'sine', track.instr.bassVol*0.8*g, now, track.fx.sustain*2, track.instr.style);
+        }
+        if(pattern.perc[subStep]) this.noise(0.06*g, now);
+        this.loop = setTimeout(() => this.tick(trackIdx, step + 1), speed * 1000);
+    },
+
+    osc(note, type, vol, time, sustain, style) {
+        const o = this.A.createOscillator(), g = this.A.createGain();
+        o.type = type; o.frequency.value = 220 * Math.pow(2, note/12);
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.setTargetAtTime(vol, time, 0.015);
+        g.gain.setTargetAtTime(0.0001, time + sustain, 0.05);
+        
+        // ADDED LOWPASS FILTER FOR WARM JAZZ/LOFI TONE
+        if (style === 'lofi' || style === 'jazz') {
+            const filter = this.A.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = style === 'lofi' ? 800 : 1200;
+            o.connect(filter).connect(g);
+        } else {
+            o.connect(g);
+        }
+
+        g.connect(this.panner); g.connect(this.wet).connect(this.delay);
+        o.start(time); o.stop(time + sustain + 0.5);
+    },
+
+    noise(vol, time, isCrackle = false) {
+        const b = this.A.createBuffer(1, this.A.sampleRate*(isCrackle?0.01:0.05), this.A.sampleRate), d = b.getChannelData(0);
+        for(let i=0; i<b.length; i++) d[i] = Math.random()*2-1;
+        const s = this.A.createBufferSource(), g = this.A.createGain();
+        s.buffer = b; g.gain.value = vol;
+        s.connect(g).connect(isCrackle ? this.panner : this.n);
+        s.start(time);
+    },
+
+    async download(t) {
+        const sr = 44100;
+        const baseTime = 60 / t.bpm / 2;
+        const totalSteps = t.seq.length * 8;
+        
+        // Calculate exact duration considering swing
+        let duration = 0;
+        for (let s = 0; s < totalSteps; s++) {
+            duration += (s % 2 === 0) ? baseTime * (1 + t.instr.swing) : baseTime * (1 - t.instr.swing);
+        }
+
+        const offlineCtx = new OfflineAudioContext(2, Math.ceil(sr * (duration + 1)), sr);
+        let currentTime = 0;
+
+        for (let s = 0; s < totalSteps; s++) {
+            const pattern = t.patterns[t.seq[Math.floor(s / 8)]];
+            const subStep = s % 8;
+            const g = t.fx.intensity;
+            
+            // Render Lead
+            this.renderOsc(offlineCtx, pattern.lead[subStep] + 12, t.instr.lead, t.instr.leadVol * g, currentTime, t.fx.sustain, t.fx.pan, t.instr.style);
+            
+            // Render Polyphony (Chords)
+            if (t.instr.poly > 1 && pattern.chords[subStep]) {
+                pattern.chords[subStep].slice(0, t.instr.poly).forEach((noteOffset) => {
+                    this.renderOsc(offlineCtx, noteOffset + 12, t.instr.lead, (t.instr.leadVol*0.4) * g, currentTime, t.fx.sustain*2, t.fx.pan, t.instr.style);
+                });
+            }
+
+            // Render Bass
+            if (subStep % 4 == 0) this.renderOsc(offlineCtx, pattern.bass[subStep] + t.fx.bassShift, t.instr.bass, t.instr.bassVol * g, currentTime, t.fx.sustain * 1.2, t.fx.pan, t.instr.style);
+            
+            // Advance time with swing
+            currentTime += (s % 2 === 0) ? baseTime * (1 + t.instr.swing) : baseTime * (1 - t.instr.swing);
+        }
+
+        const renderedBuffer = await offlineCtx.startRendering();
+        const wavData = this.bufferToWav(renderedBuffer);
+        const blob = new Blob([wavData], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${t.band}_${t.name.replace(/#/g,'')}.wav`.replace(/\s+/g, '_');
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    },
+
+    renderOsc(ctx, note, type, vol, time, sustain, pan, style) {
+        const o = ctx.createOscillator(), g = ctx.createGain(), p = ctx.createStereoPanner();
+        o.type = type; o.frequency.value = 220 * Math.pow(2, note/12);
+        p.pan.value = pan;
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.setTargetAtTime(vol, time, 0.015);
+        g.gain.setTargetAtTime(0.0001, time + sustain, 0.05);
+
+        // Render with Filter for Jazz/Lofi
+        if (style === 'lofi' || style === 'jazz') {
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = style === 'lofi' ? 800 : 1200;
+            o.connect(filter).connect(g).connect(p).connect(ctx.destination);
+        } else {
+            o.connect(g).connect(p).connect(ctx.destination);
+        }
+        
+        o.start(time); o.stop(time + sustain + 0.5);
+    },
+
+    batchDownload() {
+        if(!confirm("Export all 20 tracks as WAV files?")) return;
+        this.tracks.forEach((t, i) => setTimeout(() => this.download(t), i * 500));
+    },
+
+    bufferToWav(abuffer) {
+        let numOfChan = abuffer.numberOfChannels, length = abuffer.length * numOfChan * 2 + 44, buffer = new ArrayBuffer(length), view = new DataView(buffer), pos = 0, offset = 0;
+        const setUint16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
+        const setUint32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
+        setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157); setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+        setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan); setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4);
+        while(pos < length) {
+            for(let i=0; i<numOfChan; i++) {
+                let s = Math.max(-1, Math.min(1, abuffer.getChannelData(i)[offset]));
+                view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true); pos += 2;
+            }
+            offset++;
+        }
+        return buffer;
+    },
+
+    play() {
+        this.init();
+        if(this.A.state === 'suspended') this.A.resume();
+        if(this.loop) clearTimeout(this.loop);
+        this.isPlaying = true; this.tick(this.idx, 0);
+        const t = this.tracks[this.idx];
+        document.getElementById('play-name').innerText = t.name;
+        document.getElementById('play-artist').innerText = t.band;
+        document.getElementById('cur-title').innerText = t.name;
+        document.getElementById('cur-band').innerText = t.band;
+        document.getElementById('art-box').innerText = t.emoji;
+        const dur = (t.seq.length * 8) * (60 / t.bpm / 2);
+        document.getElementById('cur-meta').innerText = `${t.instr.name} • BPM: ${t.bpm} • ${Math.floor(dur/60)}:${(Math.floor(dur%60)).toString().padStart(2,'0')}`;
+        document.getElementById('p-btn').innerText = "⏸";
+        document.getElementById('debug-out').innerHTML = `// ENGINE_VAR: Poly[${t.instr.poly}] Swing[${t.instr.swing}] Pan[${t.fx.pan.toFixed(2)}] Rev[${t.fx.reverb.toFixed(2)}] Eco[${t.fx.echo.toFixed(2)}] SeqLen[${t.seq.length}]`;
+        this.updateActiveUI();
+    },
+
+    toggle() {
+        if(this.isPlaying) { this.isPlaying = false; clearTimeout(this.loop); document.getElementById('p-btn').innerText = "▶"; } 
+        else { this.play(); }
+    },
+
+    next() { this.idx = (this.idx + 1) % this.tracks.length; this.play(); },
+    prev() { this.idx = (this.idx - 1 + this.tracks.length) % this.tracks.length; this.play(); },
+    updateActiveUI() { document.querySelectorAll('.track-item').forEach((el, i) => el.classList.toggle('active', i === this.idx)); },
+
+    renderList() {
+        const l = document.getElementById('track-list'); l.innerHTML = '';
+        this.tracks.forEach((t, i) => {
+            let li = document.createElement('li');
+            li.className = 'track-item' + (i === this.idx ? ' active' : '');
+            const dur = (t.seq.length * 8) * (60 / t.bpm / 2);
+            li.innerHTML = `<div style="display:flex;align-items:center;gap:12px;overflow:hidden;"><span style="font-size:20px;">${t.emoji}</span><div class="track-meta-stack"><span class="t-name">${t.name}</span><span class="t-band">${t.band}</span></div></div><span class="track-duration">${Math.floor(dur/60)}:${(Math.floor(dur%60)).toString().padStart(2,'0')}</span>`;
+            li.onclick = () => { this.idx = i; this.play(); };
+            l.appendChild(li);
+        });
+    },
+
+    draw() {
+        requestAnimationFrame(() => this.draw());
+        if(!this.n) return;
+        const canvas = document.getElementById('v'), ctx = canvas.getContext('2d');
+        const data = new Uint8Array(32);
+        this.n.getByteFrequencyData(data);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#1DB954';
+        data.forEach((v, i) => ctx.fillRect(i*10, 40-v/10, 8, v/10));
+    }
+};
+</script>
+</body>
+</html>
